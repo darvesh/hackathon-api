@@ -1,12 +1,9 @@
-//const User = require('../models/Users');
-
-const mongoose = require('mongoose');
 const passport = require('passport');
 const router = require('express').Router();
 const auth = require('../service/auth');
 const User = require('../models/Users');
 const { validationResult } = require('express-validator/check');
-const { registerUserValidators, loginUserValidators } = require('../utils/validator');
+const { registerUserValidators } = require('../utils/validator');
 
 
 //POST new user route (optional, everyone has access)
@@ -31,12 +28,10 @@ router.post('/', registerUserValidators, auth.optional, (req, res, next) => {
       user: finalUser.toAuthJSON()
     }))
     .catch(error=>{
-      const userTest = /username/i;
       const emailTest = /email/i;
       const { errmsg: errorMessage } = error;
       if(error){
-        if (userTest.test(errorMessage)) error.message = "Username Already Exists";
-        else if (emailTest.test(errorMessage)) error.message = "Email Already Exists"
+        if (emailTest.test(errorMessage)) error.message = "Email Already Exists"
       }
       res.json({
         "success": "false",
@@ -50,10 +45,10 @@ router.post('/login', auth.optional, (req, res, next) => {
   const { body: { user } } = req;
   console.info(user);
 
-  if (!user.username) {
+  if (!user.email) {
     return res.status(422).json({
       errors: {
-        username: 'is required',
+        message: 'email is required',
       },
     });
   }
@@ -61,7 +56,7 @@ router.post('/login', auth.optional, (req, res, next) => {
   if (!user.password) {
     return res.status(422).json({
       errors: {
-        password: 'is required',
+        message: 'password is required',
       },
     });
   }
@@ -86,13 +81,14 @@ router.post('/login', auth.optional, (req, res, next) => {
 
     return res.status(400).json({
       "success":"false",
-      "message":"Incorrect Username or password "
+      "message":"Incorrect Email or Password "
     });
   })(req, res, next);
 });
 
 //GET current route (required, only authenticated users have access)
 router.get('/current', auth.required, (req, res, next) => {
+  console.log(req.session.user)
   const {
     payload: {
       id
@@ -110,5 +106,37 @@ router.get('/current', auth.required, (req, res, next) => {
       });
     });
 });
+
+router.put('/',auth.required, (req,res)=>{
+  if(req.session.user!=='admin'){
+    res.json({
+      success:"false",
+      message:"You are not an admin"
+    })
+  }else{
+    User.updateOne({
+      id: req.body.userId
+    }, {
+      $set: {
+        admin: true
+      }
+    }, {
+      upsert: true
+    }, function (err) {
+      console.log(err);
+      if (err) {
+        res.json({
+          sucess: false,
+          message: " Error while inserting"
+        })
+      } else {
+        res.json({
+          sucess: true,
+          message: "User is an admin now"
+        })
+      }
+    })
+  }
+})
 
 module.exports = router;

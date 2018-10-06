@@ -11,6 +11,9 @@ require('./config/config')
 require('./middlewares/passport');
 require('./models/Users');
 
+//increase event emitter
+require('events').EventEmitter.prototype._maxListeners = 100;
+
 const app = express();
 
 //Configure mongoose's promise to global promise
